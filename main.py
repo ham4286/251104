@@ -19,42 +19,44 @@ st.markdown("""
 uploaded_file = st.file_uploader("CSV 파일을 업로드하세요.", type=["csv"])
 
 if uploaded_file is not None:
-    # 데이터 불러오기
+    # CSV 로드 및 열 이름 공백 제거
     df = pd.read_csv(uploaded_file)
+    df.columns = df.columns.str.strip()  # 공백 제거
 
-    # MBTI 유형 리스트 (Country 제외)
+    # 숫자형만 변환 시도 (Country 제외)
+    for col in df.columns:
+        if col != "Country":
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    # MBTI 유형 리스트
     mbti_types = [col for col in df.columns if col != "Country"]
 
-    # 선택 위젯
-    selected_type = st.selectbox("분석할 MBTI 유형을 선택하세요:", mbti_types, index=5)
+    # 분석할 유형 선택
+    selected_type = st.selectbox("분석할 MBTI 유형을 선택하세요:", mbti_types, index=mbti_types.index("ESFJ") if "ESFJ" in mbti_types else 0)
 
-    # 선택된 MBTI 유형 기준으로 정렬
+    # 상위 10개 국가 추출
     top10 = df.sort_values(by=selected_type, ascending=False).head(10)
 
-    # 그래프 제목 표시
     st.subheader(f"🌟 {selected_type} 유형 비율이 높은 국가 TOP 10")
 
-    # Altair 차트 생성
+    # Altair 그래프
     chart = (
         alt.Chart(top10)
         .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
         .encode(
-            x=alt.X(selected_type, title=f"{selected_type} 비율", scale=alt.Scale(domain=[0, top10[selected_type].max() * 1.1])),
-            y=alt.Y("Country", sort='-x', title="국가"),
-            color=alt.Color(selected_type, scale=alt.Scale(scheme="blues")),
-            tooltip=["Country", f"{selected_type}"]
+            x=alt.X(selected_type, title=f"{selected_type} 비율", type="quantitative"),
+            y=alt.Y("Country", sort='-x', title="국가", type="nominal"),
+            color=alt.Color(selected_type, scale=alt.Scale(scheme="tealblues")),
+            tooltip=["Country", alt.Tooltip(selected_type, format=".4f", title="비율")]
         )
-        .properties(
-            height=400,
-            width=600
-        )
+        .properties(width=600, height=400)
         .interactive()
     )
 
     st.altair_chart(chart, use_container_width=True)
 
-    # 수치 데이터표 보기
-    with st.expander("📋 수치 데이터 보기"):
+    # 표 보기
+    with st.expander("📋 데이터 상세 보기"):
         st.dataframe(top10.reset_index(drop=True))
 
 else:
