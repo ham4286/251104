@@ -1,5 +1,5 @@
 streamlit
-numpy
-sympy
-altair
 pandas
+numpy
+scikit-learn
+matplotlib
